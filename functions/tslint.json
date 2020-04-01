@@ -24,6 +24,7 @@
 
     // Disallow nonsensical label usage.
     "label-position": true,
+    "semicolon": true,
 
     // Disallows the (often typo) syntax if (var1 = var2). Replace with if (var2) { var1 = var2 }.
     "no-conditional-assignment": true,
