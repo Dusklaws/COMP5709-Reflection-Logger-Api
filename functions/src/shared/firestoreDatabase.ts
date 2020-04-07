@@ -51,10 +51,7 @@ export class FirestoreDatabase<T>{
      */
     public async create(ref: string, data: T): Promise<void> {
         const newRef = this.collectionRef.doc(ref);
-        await this.db.runTransaction(t => {
-            t.create(newRef, data);
-            return Promise.resolve('Write Complete');
-        });
+        await this.runTransaction('create', newRef, data);
     }
 
     /**
@@ -66,12 +63,7 @@ export class FirestoreDatabase<T>{
      */
     public async addField(ref: string, fieldKey: string, fieldData: any): Promise<void> {
         const updateRef = this.collectionRef.doc(ref);
-        const updateObject: any = {};
-        updateObject[fieldKey] = fieldData;
-        await this.db.runTransaction(t => {
-            t.set(updateRef, updateObject, { merge: true });
-            return Promise.resolve('Write Complete');
-        });
+        await this.runTransaction('set', updateRef, fieldData, fieldKey);
     }
 
     /**
@@ -83,10 +75,36 @@ export class FirestoreDatabase<T>{
      */
     public async update(ref: string, fieldKey: string, fieldData: any): Promise<void> {
         const updateRef = this.collectionRef.doc(ref);
+        await this.runTransaction('update', updateRef, fieldData, fieldKey);
+    }
+
+    // Firestore doesn't support undefined type so do a check before 
+    private async runTransaction(type: 'create' | 'set' | 'update', ref: admin.firestore.DocumentReference, obj: any, key?: string): Promise<void> {
+        Object.entries(obj).forEach(([k, v]) => {
+            if (!v) {
+                delete obj[k];
+            }
+        });
+        if (Object.keys.length === 0) return;
         const updateObject: any = {};
-        updateObject[fieldKey] = fieldData;
+        if (key) {
+            updateObject[key] = obj;
+        }
         await this.db.runTransaction(t => {
-            t.update(updateRef, updateObject);
+            switch (type) {
+                case 'create': {
+                    t.create(ref, obj);
+                    break;
+                }
+
+                case 'set': {
+                    t.set(ref, updateObject, { merge: true });
+                }
+
+                case 'update': {
+                    t.update(ref, updateObject);
+                }
+            }
             return Promise.resolve('Write Complete');
         });
     }
