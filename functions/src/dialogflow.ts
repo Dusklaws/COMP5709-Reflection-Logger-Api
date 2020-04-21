@@ -9,20 +9,23 @@ import { FirestoreDatabase } from './shared/firestoreDatabase';
 
 let user: User | undefined;
 const logCollection = new FirestoreDatabase<Log>('log');
+const userCollection = new FirestoreDatabase<User>('user');
 // const userCollection = new FirestoreDatabase<User>('user');
 
-export const post = functions.region(en.region).https.onRequest(async (request, response) => {
+export const handler = functions.region(en.region).https.onRequest(async (request, response) => {
     // Basic auth to verify webhook
     if ((Buffer.from(en.dialogflowSecret).toString('base64') === request.headers.authorization)) {
         response.status(401).send('Invalid Authorization Header');
+        return;
     }
     const agent = new WebhookClient({ request, response });
     const payload = request.body;
     console.log(payload);
-    const id_token = payload.originalDetectIntentRequest.payload.user.idToken;
-    user = await verifyGoogleIdToken(id_token);
+    const idToken = payload.originalDetectIntentRequest.payload.user.idToken;
+    user = await verifyGoogleIdToken(idToken, 'actions');
     if (!user) {
         response.status(400).send();
+        return;
     }
 
     const intentMap = new Map();
@@ -51,6 +54,16 @@ async function handleDailyReporting(agent: WebhookClient) {
             submissionTime: (new Date()).toISOString(),
             ...parameters
         });
+        const newHistory: User.History = {
+            date: (new Date()).toISOString(),
+            rating: parameters.dailyRating
+        };
+        const history = user!.history;
+        if (user!.history.length > 5) {
+            history.shift();
+        }
+        history.push(newHistory);
+        await userCollection.update(user!.email, 'history', history);
         // TODO: uncomment this once the middle stage student flow is ready
         // await userCollection.update(user!.email, 'isStudentMiddle', true);
         return;
@@ -63,7 +76,7 @@ async function handleDailyReporting(agent: WebhookClient) {
         ...parameters
     });
     // TODO: Start the flow for the middle stage student
-    agent.end('Thank you for your responses. The log have been submitted to the supervisor. Have a good day!');
+    agent.end('Thank you for your response. The log have been submitted to the supervisor, if you need to edit your response please visit the log website. Have a good day!');
 }
 
 async function handleGeneralReporting(agent: WebhookClient) {
@@ -119,7 +132,7 @@ async function handleGeneralIntent(
         agent.setFollowupEvent(nextEvent);
         return;
     }
-    agent.end('Thank you for your responses. The log have been submitted to the supervisor. Have a good day!');
+    agent.end('Thank you for your response. The log have been submitted to the supervisor, if you need to edit your response please visit the log website. Have a good day!');
 }
 
 function getSessionId(agent: WebhookClient): string {

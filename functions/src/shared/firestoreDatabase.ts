@@ -29,6 +29,20 @@ export class FirestoreDatabase<T>{
     }
 
     /**
+     * Retrieve all document within collection
+     *
+     * @return the promise of the data for all documents in this collection as array
+     */
+    public async getAll(): Promise<T[]> {
+        const res = await this.collectionRef.get();
+        const data: T[] = [];
+        res.forEach(r => {
+            data.push(r.data() as T);
+        });
+        return data;
+    }
+
+    /**
      * Retrieve a document by using query
      * 
      * @param queryField The attribute that is being queried
