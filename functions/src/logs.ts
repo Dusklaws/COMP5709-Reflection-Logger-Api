@@ -5,10 +5,10 @@ import * as _ from 'lodash';
 import * as en from './environment';
 import { getUser } from './shared/auth';
 import { FirestoreDatabase } from './shared/firestoreDatabase';
-import { User } from './typings/user';
+import { Log } from './typings/log';
 
 const corsHandler = cors({ origin: true });
-const userCollection = new FirestoreDatabase<User>('user');
+const logCollection = new FirestoreDatabase<Log>('log');
 
 export const handler = functions.region(en.region).https.onRequest(async (request, response) => {
     await corsHandler(request, response, async () => {
@@ -18,12 +18,12 @@ export const handler = functions.region(en.region).https.onRequest(async (reques
             response.status(401).send('Missing or invalid Google Id Token in header');
             return;
         }
-        if (user.type === 'supervisor') {
-            const users = await userCollection.getAll();
-            const students = users.filter(u => u.type === 'student');
-            response.status(200).send(students);
+        const { email: requestedEmail }: { email: string } = request.body;
+        if (user.email === requestedEmail || user.type === 'supervisor') {
+            const logs = await logCollection.getAllBy('email', requestedEmail);
+            response.status(200).send(logs);
             return;
         }
-        response.status(200).send([user]);
+        response.status(401).send(`User is not authorized to view resource: ${requestedEmail}`);
     });
 });

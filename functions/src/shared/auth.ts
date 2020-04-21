@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import type { User } from '../typings/user';
 import * as en from '../environment';
 import { FirestoreDatabase } from './firestoreDatabase';
+import { https } from 'firebase-functions';
 
 const kActionsGoogleClientId = en.actionsGoogleClientId;
 const kWebGoogleClientId = en.webGoogleClientId;
@@ -26,7 +27,7 @@ export async function verifyGoogleIdToken(token: string, type: 'web' | 'actions'
         return undefined;
     }
 
-    const userDetails: User = { email: googlePayload.email, name: googlePayload.name, type: 'student', isStudentMiddle: false, history: []};
+    const userDetails: User = { email: googlePayload.email, name: googlePayload.name, type: 'student', isStudentMiddle: false, history: [] };
     const userObject = await userCollection.get(userDetails.email);
     if (!userObject) {
         await userCollection.create(userDetails.email, userDetails);
@@ -35,4 +36,12 @@ export async function verifyGoogleIdToken(token: string, type: 'web' | 'actions'
     }
 
     return userObject;
+}
+
+export async function getUser(request: https.Request): Promise<User | undefined> {
+    const googleIdToken = request.get('GoogleIdToken');
+    if (!googleIdToken) {
+        return;
+    }
+    return verifyGoogleIdToken(googleIdToken, 'web');
 }
