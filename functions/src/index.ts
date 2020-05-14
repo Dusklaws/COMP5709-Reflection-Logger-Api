@@ -1,3 +1,20 @@
-import * as dialogflow from './dialogflow';
+import * as express from 'express';
+import * as functions from 'firebase-functions';
+import * as cors from 'cors';
 
-exports.postDialogflow = dialogflow.post;
+import * as en from './environment';
+import * as dialogflow from './dialogflow';
+import * as auth from './auth';
+import * as students from './students';
+import * as logs from './logs';
+
+const app = express();
+
+app.get('/students', students.getStudents);
+app.get('/students/:email/remove_help', students.removeHelp);
+app.get('/logs/:email', logs.getLogs);
+app.use(cors({ origin: true }));
+
+exports.auth = auth.handler;
+exports.dialogflow = dialogflow.handler;
+exports.api = functions.region(en.region).https.onRequest(app);

@@ -29,6 +29,21 @@ export class FirestoreDatabase<T>{
     }
 
     /**
+     * Retrieve all document within collection
+     *
+     * @return the promise of the data for all documents in this collection as array
+     */
+    public async getAll(): Promise<T[]> {
+        const res = await this.collectionRef.get();
+        const data: T[] = [];
+        res.forEach(r => {
+            data.push(r.data() as T);
+        });
+        return data;
+    }
+    
+
+    /**
      * Retrieve a document by using query
      * 
      * @param queryField The attribute that is being queried
@@ -36,11 +51,30 @@ export class FirestoreDatabase<T>{
      * @return the promise of the data for the first document found with the query or undefined if nothing is found
      */
     public async getBy(queryField: string, queryString: string): Promise<T | void> {
-        const queryRef = this.collectionRef.where(queryField, '==', 'queryString');
+        const queryRef = this.collectionRef.where(queryField, '==', queryString);
         const res = await queryRef.get();
         if (res.empty) return undefined;
         // Just Return the first one        
         return res.docs[0].data() as T;
+    }
+
+    /**
+     * Retrieve documents by using query
+     * 
+     * @param queryField The attribute that is being queried
+     * @param queryString The actual query string
+     * @return the promise of the data for the all the document found with the query or empty array if nothing is found
+     */
+    public async getAllBy(queryField: string, queryString: string): Promise<T[]> {
+        const queryRef = this.collectionRef.where(queryField, '==', queryString);
+        const res = await queryRef.get();
+        const data: T[] = [];
+        if (res.empty) return data;
+        // Return all of it
+        res.forEach(r => {
+            data.push(r.data() as T);
+        });
+        return data;      
     }
 
     /**
