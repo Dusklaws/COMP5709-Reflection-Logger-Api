@@ -1,6 +1,6 @@
 export interface Log {
     email: string;
-    studentType: Log.StudentType;
+    logType: Log.LogType;
     submissionTime: string;
     dailyRating: number;
     dailySummary: string;
@@ -11,21 +11,24 @@ export interface Log {
     // Middle Stage
     workReportingParameters?: Log.WorkReportingParameters;
     helpReportingParameters?: Log.HelpReportingParameters;
+    checkUpReportingParameters?: Log.CheckUpReportingParameters;
 }
 
 export namespace Log {
-    type StudentType = 'initial' | 'middle';
-    type logType = 'internshipReportingParameters'
+    type LogType = 'initial' | 'check-up' | 'full' | 'rating';
+    type parametersType = 'internshipReportingParameters'
         | 'technologyReportingParameters'
         | 'issueReportingParameters'
         | 'workReportingParameters'
-        | 'helpReportingParameters';
+        | 'helpReportingParameters'
+        | 'checkUpReportingParameters';
     type eventString = 'initial-general-reporting'
         | 'initial-technology-reporting'
         | 'initial-issue-reporting'
         | 'middle-work-reporting'
         | 'middle-deadline-reporting'
-        | 'middle-help-reporting';
+        | 'middle-help-reporting'
+        | 'middle-checkup-reporting';
 
     export interface InternshipReportingParameters {
         employeeName: string;
@@ -52,9 +55,16 @@ export namespace Log {
 
     export interface HelpReportingParameters {
         challenges: string;
-        meeting: string;
         resources: string;
-        consult: string;
-        support: string;
+        support: boolean;
+        meeting: boolean;
+    }
+
+    export interface CheckUpReportingParameters {
+        ability: number;
+        tools: number;
+        support: number;
+        learning: number;
+        likeness: number;
     }
 }

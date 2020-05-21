@@ -33,9 +33,11 @@ export const handler = functions.region(en.region).https.onRequest(async (reques
     intentMap.set('Initial Stage - Internship Reporting', handleInternShipReporting);
     intentMap.set('Initial Stage - Technology Reporting', handleTechnologyReporting);
     intentMap.set('Initial Stage - Issue Reporting', handleIssueReporting);
+
     intentMap.set('Middle Stage - Work Reporting', handleWorkIntent);
     intentMap.set('Middle Stage - Deadline Reporting', handleDeadlineIntent);
     intentMap.set('Middle Stage - Help Reporting', handleHelpIntent);
+    intentMap.set('Middle Stage - CheckUp Reporting', handleCheckUpIntent);
     await agent.handleRequest(intentMap);
 });
 
@@ -47,7 +49,7 @@ async function handleDailyReporting(agent: WebhookClient) {
         dailySummary: string;
     } = agent.parameters as any;
 
-    parameters.dailyRating = parameters.dailyRating > 10 ? 10 : parameters.dailyRating < 1 ? 1 : parameters.dailyRating;
+    parameters.dailyRating = limitNumber(parameters.dailyRating, 1, 10);
 
     const history = user!.history;
     if (history.length > 0 && isToday(history[history.length - 1].date)) {
@@ -71,7 +73,7 @@ async function handleDailyReporting(agent: WebhookClient) {
     await userCollection.update(user!.email, 'history', history);
     await logCollection.create(sessionId, {
         email: user!.email,
-        studentType: user?.isStudentMiddle ? 'middle' : 'initial',
+        logType: 'rating',
         submissionTime: (new Date()).toISOString(),
         ...parameters
     });
@@ -79,10 +81,15 @@ async function handleDailyReporting(agent: WebhookClient) {
     //Dialogflow for need add to trigger the next event
     agent.add('');
     if (!user!.isStudentMiddle) {
-        await userCollection.update(user!.email, 'isStudentMiddle', true);
         agent.setFollowupEvent('initial-internship-reporting');
     } else {
-        agent.setFollowupEvent('middle-work-reporting');
+        const lastFullLogs = user!.lastFullLogs;
+        if (lastFullLogs && new Date(lastFullLogs).getTime() + (7 * 24 * 60 * 60 * 1000) > new Date().getTime()) {
+            agent.setFollowupEvent('middle-checkup-reporting');
+        } else {
+            agent.setFollowupEvent('middle-work-reporting');
+        }
+
     }
 }
 
@@ -92,7 +99,15 @@ async function handleInternShipReporting(agent: WebhookClient) {
         startDate: (new Date(agent.parameters.startDate)).toISOString(),
         endDate: (new Date(agent.parameters.endDate)).toISOString()
     };
+
     await userCollection.update(user!.email, 'internshipDetails', parameters);
+    await userCollection.update(user!.email, 'isStudentMiddle', true);
+
+    user!.lastFullLogs = new Date().toISOString();
+    await userCollection.update(user!.email, 'lastFullLogs', user!.lastFullLogs);
+
+    await logCollection.update(getSessionId(agent), 'logType', 'initial');
+
     await handleGeneralIntent(
         agent,
         parameters,
@@ -127,6 +142,7 @@ async function handleIssueReporting(agent: WebhookClient) {
     );
 }
 
+// Middle Stage
 async function handleWorkIntent(agent: WebhookClient) {
     const parameters: Log.WorkReportingParameters = {
         task: agent.parameters.task,
@@ -164,22 +180,36 @@ async function handleHelpIntent(agent: WebhookClient) {
     const parameters: Log.HelpReportingParameters = {
         challenges: agent.parameters.challenges,
         resources: agent.parameters.resources,
-        support: agent.parameters.support,
-        consult: agent.parameters.consult,
-        meeting: agent.parameters.meeting
+        support: isYes(agent.parameters.support),
+        meeting: isYes(agent.parameters.meeting)
     };
+    user!.lastFullLogs = new Date().toISOString();
+    await userCollection.update(user!.email, 'lastFullLogs', user!.lastFullLogs);
+    await logCollection.update(getSessionId(agent), 'logType', 'full');
     await handleGeneralIntent(agent, parameters, 'helpReportingParameters');
+}
+
+async function handleCheckUpIntent(agent: WebhookClient) {
+    const parameters: Log.CheckUpReportingParameters = {
+        ability: limitNumber(parseInt(agent.parameters.ability), 1, 5),
+        tools: limitNumber(parseInt(agent.parameters.tools), 1, 5),
+        support: limitNumber(parseInt(agent.parameters.support), 1, 5),
+        learning: limitNumber(parseInt(agent.parameters.learning), 1, 5),
+        likeness: limitNumber(parseInt(agent.parameters.likeness), 1, 5),
+    };
+    await logCollection.update(getSessionId(agent), 'logType', 'check-up');
+    await handleGeneralIntent(agent, parameters, 'checkUpReportingParameters');
 }
 
 async function handleGeneralIntent(
     agent: WebhookClient,
     parameters?: any,
-    logType?: Log.logType,
+    parametersType?: Log.parametersType,
     nextEvent?: Log.eventString,
 ) {
     const sessionId = getSessionId(agent);
-    if (parameters && logType) {
-        await logCollection.addField(sessionId, logType, parameters);
+    if (parameters && parametersType) {
+        await logCollection.addField(sessionId, parametersType, parameters);
     }
     //Dialogflow for need add to trigger the next event so we just add an empty text
     if (nextEvent) {
@@ -207,4 +237,8 @@ function isYes(s: string): boolean {
 function isToday(s: string): boolean {
     return false;
     // return getDate(s) === getDate((new Date()).toISOString());
+}
+
+function limitNumber(n: number, min: number, max: number): number {
+    return n > max ? max : n < min ? min : n;
 }

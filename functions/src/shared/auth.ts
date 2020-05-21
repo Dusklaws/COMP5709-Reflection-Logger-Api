@@ -27,12 +27,17 @@ export async function verifyGoogleIdToken(token: string, type: 'web' | 'actions'
         return undefined;
     }
 
-    const userDetails: User = { email: googlePayload.email, name: googlePayload.name, type: 'student', isStudentMiddle: false, history: [] };
+    const userDetails: User = { email: googlePayload.email, name: googlePayload.name, type: type === 'actions' ? 'student' : 'non-authorized', isStudentMiddle: false, history: [] };
     const userObject = await userCollection.get(userDetails.email);
     if (!userObject) {
         await userCollection.create(userDetails.email, userDetails);
         console.log(`New user created: ${JSON.stringify(userDetails)}`);
         return userDetails;
+    }
+
+    if (userObject.type === 'non-authorized' && type === 'actions') {
+        userObject.type = 'student';
+        await userCollection.update(userObject.email, 'type', 'student');
     }
 
     return userObject;
