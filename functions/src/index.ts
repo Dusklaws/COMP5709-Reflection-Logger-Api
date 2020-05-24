@@ -14,6 +14,7 @@ const app = express();
 app.get('/students', students.getStudents);
 app.get('/students/:email/remove_help', students.removeHelp);
 app.get('/logs/:email', logs.getLogs);
+app.post('/log', logs.updateLog);
 app.use(cors({ origin: true }));
 
 app.get('/generateSampleUser', util.generateSampleUser);

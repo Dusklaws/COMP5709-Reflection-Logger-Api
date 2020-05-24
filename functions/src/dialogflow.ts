@@ -72,6 +72,7 @@ async function handleDailyReporting(agent: WebhookClient) {
     const sessionId = getSessionId(agent);
     await userCollection.update(user!.email, 'history', history);
     await logCollection.create(sessionId, {
+        id: sessionId,
         email: user!.email,
         logType: 'rating',
         submissionTime: (new Date()).toISOString(),

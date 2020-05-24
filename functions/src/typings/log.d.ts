@@ -4,6 +4,7 @@ export interface Log {
     submissionTime: string;
     dailyRating: number;
     dailySummary: string;
+    id: string;
     // Initial Stage
     internshipReportingParameters?: Log.InternshipReportingParameters;
     technologyReportingParameters?: Log.TechnologyReportingParameters;

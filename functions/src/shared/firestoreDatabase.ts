@@ -41,7 +41,7 @@ export class FirestoreDatabase<T>{
         });
         return data;
     }
-    
+
 
     /**
      * Retrieve a document by using query
@@ -74,7 +74,7 @@ export class FirestoreDatabase<T>{
         res.forEach(r => {
             data.push(r.data() as T);
         });
-        return data;      
+        return data;
     }
 
     /**
@@ -101,7 +101,7 @@ export class FirestoreDatabase<T>{
     }
 
     /**
-     * Update a document
+     * Update a field in a document
      *
      * @param ref The reference of the document being updated
      * @param fieldKey The key of the field that is being updated
@@ -110,6 +110,17 @@ export class FirestoreDatabase<T>{
     public async update(ref: string, fieldKey: string, fieldData: any): Promise<void> {
         const updateRef = this.collectionRef.doc(ref);
         await this.runTransaction('update', updateRef, fieldData, fieldKey);
+    }
+
+    /**
+    * Update a document
+    *
+    * @param ref The reference of the document being updated
+    * @param updateObject Partial of the object being updated
+    */
+    public async updateWhole(ref: string, updateObject: any): Promise<void> {
+        const updateRef = this.collectionRef.doc(ref);
+        await updateRef.update(updateObject);
     }
 
     // Firestore doesn't support undefined type so do a check before 
