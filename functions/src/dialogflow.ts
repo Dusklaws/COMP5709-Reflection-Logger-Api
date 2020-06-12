@@ -226,18 +226,17 @@ function getSessionId(agent: WebhookClient): string {
     return session.pop()!;
 }
 
-// function getDate(d: string): string {
-//     const date = new Date(d);
-//     return date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
-// }
+function getDate(d: string): string {
+    const date = new Date(d);
+    return date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+}
 
 function isYes(s: string): boolean {
     return s.toLowerCase() === 'yes';
 }
 
 function isToday(s: string): boolean {
-    return false;
-    // return getDate(s) === getDate((new Date()).toISOString());
+    return getDate(s) === getDate((new Date()).toISOString());
 }
 
 function limitNumber(n: number, min: number, max: number): number {
